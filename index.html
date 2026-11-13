@@ -1,0 +1,311 @@
+DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VÍDEO AI - Gerador Próprio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d1c;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: #111833;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      border: 1px solid #1e2a5a;
+    }
+    h1 {
+      text-align: center;
+      font-size: 26px;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #00d2ff, #7b2cbf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.sub {
+      text-align: center;
+      font-size: 13px;
+      color: #9aa5ce;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #c0caf5;
+      font-weight: bold;
+    }
+    textarea, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #29356b;
+      background: #090d1c;
+      color: #fff;
+      font-size: 15px;
+      margin-bottom: 15px;
+      outline: none;
+    }
+    textarea:focus, select:focus {
+      border-color: #00d2ff;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:disabled {
+      background: #2c3554;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .status-box {
+      margin-top: 15px;
+      display: none;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: #090d1c;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #00f5d4;
+      transition: width 0.2s;
+    }
+    canvas {
+      width: 100%;
+      border-radius: 12px;
+      margin-top: 15px;
+      background: #000;
+      display: none;
+      border: 1px solid #29356b;
+    }
+    video {
+      width: 100%;
+      border-radius: 12px;
+      margin-top: 15px;
+      display: none;
+      border: 2px solid #00f5d4;
+    }
+    .download-btn {
+      display: none;
+      margin-top: 12px;
+      text-align: center;
+      background: #00b894;
+      color: #fff;
+      text-decoration: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>VÍDEO AI</h1>
+    <p class="sub">Sua Inteligência Artificial de Geração de Vídeo</p>
+
+    <label for="prompt">Descreva o seu vídeo (Prompt):</label>
+    <textarea id="prompt" rows="3" placeholder="Ex: Uma viagem rápida pelo espaço neon com energia azul e estrelas..."></textarea>
+
+    <label for="tema">Estilo Visual da IA:</label>
+    <select id="tema">
+      <option value="auto">Automático (IA decide pelo texto)</option>
+      <option value="cyber">Cyberpunk / Neon</option>
+      <option value="espaco">Espaço / Galáxia</option>
+      <option value="fogo">Fogo / Energia Intensa</option>
+      <option value="oceano">Oceano / Calmo</option>
+    </select>
+
+    <label for="duracao">Duração do Vídeo:</label>
+    <select id="duracao">
+      <option value="30" selected>30 Segundos (Padrão)</option>
+      <option value="15">15 Segundos (Rápido)</option>
+      <option value="45">45 Segundos (Longo)</option>
+    </select>
+
+    <button id="btnGerar" onclick="iniciarIA()">Gerar Vídeo Agora</button>
+
+    <div class="status-box" id="statusBox">
+      <span id="statusTexto" style="font-size: 13px; color: #00f5d4;">Processando prompt... 0%</span>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <canvas id="canvasIA" width="720" height="480"></canvas>
+    <video id="videoFinal" controls playsinline></video>
+    <a id="btnDownload" class="download-btn" download="meu-video-ai.webm">Baixar Vídeo Pronto</a>
+  </div>
+
+  <script>
+    function analisarPrompt(texto, temaSelecionado) {
+      const t = texto.toLowerCase();
+      let cores = ['#00d2ff', '#7b2cbf', '#ff007f'];
+      let velocidade = 2;
+      let fundo = '#050814';
+
+      if (temaSelecionado !== 'auto') {
+        if (temaSelecionado === 'cyber') { cores = ['#00f5d4', '#ff007f', '#fee440']; velocidade = 4; }
+        if (temaSelecionado === 'espaco') { cores = ['#ffffff', '#4cc9f0', '#4361ee']; velocidade = 1.5; }
+        if (temaSelecionado === 'fogo') { cores = ['#ff4d00', '#ff9e00', '#ff0000']; velocidade = 5; }
+        if (temaSelecionado === 'oceano') { cores = ['#0077b6', '#00b4d8', '#90e0ef']; velocidade = 1.2; }
+      } else {
+        if (t.includes('fogo') || t.includes('vermelho') || t.includes('quente') || t.includes('explosão')) {
+          cores = ['#ff4d00', '#ff9e00', '#ff0000']; velocidade = 4.5;
+        } else if (t.includes('oceano') || t.includes('água') || t.includes('azul') || t.includes('calmo')) {
+          cores = ['#0077b6', '#00b4d8', '#90e0ef']; velocidade = 1.5;
+        } else if (t.includes('floresta') || t.includes('verde') || t.includes('natureza')) {
+          cores = ['#2b9348', '#55a630', '#aacc00']; velocidade = 2;
+        }
+      }
+
+      if (t.includes('rápido') || t.includes('ação') || t.includes('velocidade')) velocidade *= 1.8;
+      if (t.includes('lento') || t.includes('suave')) velocidade *= 0.6;
+
+      return { cores, velocidade, fundo };
+    }
+
+    function iniciarIA() {
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!prompt) {
+        alert('Digite uma descrição para a IA criar o vídeo!');
+        return;
+      }
+
+      const tema = document.getElementById('tema').value;
+      const duracaoSegundos = parseInt(document.getElementById('duracao').value);
+      const config = analisarPrompt(prompt, tema);
+
+      const btn = document.getElementById('btnGerar');
+      const statusBox = document.getElementById('statusBox');
+      const statusTexto = document.getElementById('statusTexto');
+      const progressFill = document.getElementById('progressFill');
+      const canvas = document.getElementById('canvasIA');
+      const ctx = canvas.getContext('2d');
+      const videoFinal = document.getElementById('videoFinal');
+      const btnDownload = document.getElementById('btnDownload');
+
+      btn.disabled = true;
+      statusBox.style.display = 'block';
+      canvas.style.display = 'block';
+      videoFinal.style.display = 'none';
+      btnDownload.style.display = 'none';
+
+      // Criar partículas baseadas no prompt
+      const particulas = [];
+      for (let i = 0; i < 90; i++) {
+        particulas.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          raio: Math.random() * 5 + 2,
+          cor: config.cores[Math.floor(Math.random() * config.cores.length)],
+          vx: (Math.random() - 0.5) * config.velocidade * 2,
+          vy: (Math.random() - 0.5) * config.velocidade * 2
+        });
+      }
+
+      // Configurar gravador de vídeo do navegador
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks = [];
+
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        videoFinal.src = url;
+        videoFinal.style.display = 'block';
+        canvas.style.display = 'none';
+        btnDownload.href = url;
+        btnDownload.style.display = 'block';
+        btn.disabled = false;
+        statusTexto.innerText = 'Vídeo de ' + duracaoSegundos + 's concluído com sucesso!';
+      };
+
+      recorder.start();
+      const inicio = Date.now();
+      const duracaoMs = duracaoSegundos * 1000;
+
+      function desenharFrame() {
+        const decorrido = Date.now() - inicio;
+        const progresso = Math.min((decorrido / duracaoMs) * 100, 100);
+
+        progressFill.style.width = progresso + '%';
+        statusTexto.innerText = `Renderizando vídeo da IA... ${Math.floor(decorrido / 1000)}s / ${duracaoSegundos}s (${Math.floor(progresso)}%)`;
+
+        // Fundo com rastro suave
+        ctx.fillStyle = 'rgba(9, 13, 28, 0.25)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Ondas centrais dinâmicas
+        const tempo = decorrido * 0.002;
+        ctx.beginPath();
+        ctx.strokeStyle = config.cores[0];
+        ctx.lineWidth = 3;
+        for (let x = 0; x < canvas.width; x += 15) {
+          const y = canvas.height / 2 + Math.sin(x * 0.015 + tempo * config.velocidade) * 60;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Desenhar e mover partículas
+        particulas.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.raio, 0, Math.PI * 2);
+          ctx.fillStyle = p.cor;
+          ctx.fill();
+        });
+
+        // Exibir o prompt animado no vídeo
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.fillRect(20, canvas.height - 75, canvas.width - 40, 55);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        const textoExibido = prompt.length > 52 ? prompt.substring(0, 52) + '...' : prompt;
+        ctx.fillText(textoExibido, canvas.width / 2, canvas.height - 42);
+
+        if (decorrido < duracaoMs) { javascript
+          requestAnimationFrame(desenharFrame);
+        } else {
+          recorder.stop();
+        }
+      }
+
+      desenharFrame();
+    }
+  </script>
+
+</body>
+</html>
